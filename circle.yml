@@ -1,0 +1,31 @@
+machine:
+  xcode:
+    version: "8.2.1"
+  environment:
+    GYM_CODE_SIGNING_IDENTITY: "iPhone Developer: Manuel Cedeno (938TGB23MQ)"
+
+checkout:
+  post:
+    - git submodule sync
+    - git submodule update --init --recursive
+
+dependencies:
+test:
+  override:
+    - set -o pipefail &&
+      xcodebuild
+        -sdk iphonesimulator
+        -workspace TestProject.xcworkspace
+        -scheme "Test"
+        -destination 'platform=iOS Simulator,name=iPhone 6,OS=latest'
+        clean build test |
+      tee $CIRCLE_ARTIFACTS/xcode_raw.log |
+      xcpretty --color --report junit --output $CIRCLE_TEST_REPORTS/xcode/results.xml
+deployment:
+  alpha_distribution:
+    branch: circleci_test
+    commands: 
+      - fastlane master
+      - scripts/deploy.sh
+      - sudo pip install 'Circle-Beacon == 2.0.0'
+      - alert-circle mapzen documentation master $CIRCLE_TOKEN
